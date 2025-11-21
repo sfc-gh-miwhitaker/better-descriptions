@@ -17,7 +17,7 @@
  *   5. Wait ~5 minutes for complete deployment
  * 
  * WHAT THIS SCRIPT DOES:
- *   - Creates API Integration for GitLab access
+ *   - Creates API Integration for GitHub access
  *   - Creates Git Repository stage pointing to project source
  *   - Creates dedicated warehouse (SFE_ENHANCEMENT_WH)
  *   - Creates database and schema (SNOWFLAKE_EXAMPLE.SEMANTIC_ENHANCEMENTS)
@@ -72,14 +72,14 @@ CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS
 USE SCHEMA SNOWFLAKE_EXAMPLE.GIT_REPOS;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- STEP 2: Create API Integration for GitLab Access
+-- STEP 2: Create API Integration for GitHub Access
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE API INTEGRATION SFE_BETTERDESC_GIT_API_INTEGRATION
   API_PROVIDER = GIT_HTTPS_API
-  API_ALLOWED_PREFIXES = ('https://snow.gitlab-dedicated.com/snowflakecorp/SE/sales-engineering/')
+  API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-miwhitaker/')
   ENABLED = TRUE
-  COMMENT = 'DEMO: better-descriptions - GitLab integration for public repo access | Author: SE Community | Expires: 2025-12-21';
+  COMMENT = 'DEMO: better-descriptions - GitHub integration for public repo access | Author: SE Community | Expires: 2025-12-21';
 
 -- Verify API Integration
 SHOW API INTEGRATIONS LIKE 'SFE_BETTERDESC_GIT_API_INTEGRATION';
@@ -90,7 +90,7 @@ SHOW API INTEGRATIONS LIKE 'SFE_BETTERDESC_GIT_API_INTEGRATION';
 
 CREATE OR REPLACE GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.SFE_BETTERDESC_REPO
   API_INTEGRATION = SFE_BETTERDESC_GIT_API_INTEGRATION
-  ORIGIN = 'https://snow.gitlab-dedicated.com/snowflakecorp/SE/sales-engineering/miwhitaker-tool-betterdescriptions.git'
+  ORIGIN = 'https://github.com/sfc-gh-miwhitaker/better-descriptions.git'
   COMMENT = 'DEMO: better-descriptions - Semantic view enhancement tool source repository | Author: SE Community | Expires: 2025-12-21';
 
 -- Fetch latest from repository
@@ -175,7 +175,7 @@ SELECT '✅ DEPLOYMENT COMPLETE' AS STATUS,
 
 -- ❌ ERROR: "Could not access Git repository"
 --    SOLUTION: Repository may be private or URL incorrect
---    Verify: https://snow.gitlab-dedicated.com/snowflakecorp/SE/sales-engineering/miwhitaker-tool-betterdescriptions.git
+--    Verify: https://github.com/sfc-gh-miwhitaker/better-descriptions.git
 --    Check: SHOW GIT REPOSITORIES;
 
 -- ❌ ERROR: "Warehouse not found"
