@@ -1,10 +1,9 @@
-name: Demo Expiration Check
+name: Demo Expiration
 
 on:
   schedule:
-    # Run daily at 9 AM UTC
-    - cron: '0 9 * * *'
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 9 * * *'  # Daily at 9 AM UTC
+  workflow_dispatch:
 
 env:
   EXPIRATION_DATE: '2025-12-21'
@@ -14,130 +13,28 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Check if demo has expired
-        id: check_date
+      - name: Check expiration
+        id: check
         run: |
-          EXPIRATION_DATE="${{ env.EXPIRATION_DATE }}"
-          CURRENT_DATE=$(date +%Y-%m-%d)
-          
-          echo "Current date: $CURRENT_DATE"
-          echo "Expiration date: $EXPIRATION_DATE"
-          
-          if [[ "$CURRENT_DATE" > "$EXPIRATION_DATE" ]]; then
+          if [[ "$(date +%Y-%m-%d)" > "${{ env.EXPIRATION_DATE }}" ]]; then
             echo "expired=true" >> $GITHUB_OUTPUT
-            echo "Demo has expired!"
-          else
-            echo "expired=false" >> $GITHUB_OUTPUT
-            echo "Demo is still active"
-            
-            # Calculate days until expiration
-            DAYS_UNTIL=$(( ( $(date -d "$EXPIRATION_DATE" +%s) - $(date -d "$CURRENT_DATE" +%s) ) / 86400 ))
-            echo "days_until_expiry=$DAYS_UNTIL" >> $GITHUB_OUTPUT
-            
-            if [[ $DAYS_UNTIL -le 7 ]]; then
-              echo "warning=true" >> $GITHUB_OUTPUT
-              echo "Warning: Demo expires in $DAYS_UNTIL days"
-            fi
           fi
       
-      - name: Create expiration notice
-        if: steps.check_date.outputs.expired == 'true'
+      - name: Archive repository
+        if: steps.check.outputs.expired == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat > EXPIRED.md << 'EOF'
-          # This Demo Has Expired
-          
-          **Expiration Date:** ${{ env.EXPIRATION_DATE }}  
-          **Status:** EXPIRED
-          
-          This demonstration project has reached its 30-day expiration date and has been archived.
-          
-          ## Why Did This Expire?
-          
-          Demo projects are designed to showcase Snowflake features as they exist at a specific point in time. After 30 days:
-          - Features may have been updated
-          - Syntax may have changed
-          - Best practices may have evolved
-          
-          ## Getting an Updated Version
-          
-          Contact the Snowflake SE community for:
-          - Updated version of this demo
-          - Latest best practices
-          - Current feature documentation
-          
-          ## For Historical Reference
-          
-          This code remains available for reference purposes but should not be used as-is for new implementations.
-          
-          ---
-          
-          **Original Purpose:** Semantic view enhancement with Cortex AI  
-          **Author:** SE Community  
-          **Created:** 2025-11-21  
-          **Expired:** ${{ env.EXPIRATION_DATE }}
-          EOF
-          
-          git config user.name "GitHub Actions Bot"
+          echo "# Demo Expired: ${{ env.EXPIRATION_DATE }}" > EXPIRED.md
+          git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add EXPIRED.md
-          git commit -m "docs: add expiration notice (automated)"
+          git commit -m "chore: demo expired"
           git push
-      
-      - name: Archive and make private (if repository is public)
-        if: steps.check_date.outputs.expired == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Archive the repository
-          gh repo archive ${{ github.repository }} --yes || echo "Already archived or insufficient permissions"
-          
-          # Note: Making repository private requires admin:repo scope
-          # If running in GitHub, this may need GITHUB_TOKEN with appropriate permissions
-          # For GitLab, this workflow would need to be adapted to use GitLab CI/CD
-          
-          echo "Repository archived. Manual intervention may be required to make private."
-      
-      - name: Warning notification (expiring soon)
-        if: steps.check_date.outputs.warning == 'true' && steps.check_date.outputs.expired == 'false'
-        run: |
-          echo "::warning::Demo expires in ${{ steps.check_date.outputs.days_until_expiry }} days on ${{ env.EXPIRATION_DATE }}"
-      
-      - name: Create GitHub Issue for expiration warning
-        if: steps.check_date.outputs.warning == 'true' && steps.check_date.outputs.expired == 'false'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ISSUE_TITLE="Demo Expiring Soon: ${{ steps.check_date.outputs.days_until_expiry }} days remaining"
-          ISSUE_BODY="This demo will expire on **${{ env.EXPIRATION_DATE }}** (${{ steps.check_date.outputs.days_until_expiry }} days from now).
-
-          ## Actions Required
-          
-          - [ ] Update demo with latest features
-          - [ ] Extend expiration date if still relevant
-          - [ ] Archive if no longer needed
-          
-          ## Automated Process
-          
-          If no action is taken, this repository will be:
-          1. Marked as expired
-          2. Automatically archived
-          3. Made private (if permissions allow)
-          
-          This is an automated reminder from the demo expiration workflow."
-          
-          # Check if issue already exists
-          EXISTING_ISSUE=$(gh issue list --search "Demo Expiring Soon" --state open --json number --jq '.[0].number')
-          
-          if [[ -z "$EXISTING_ISSUE" ]]; then
-            gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY" --label "expiration-warning"
-          else
-            echo "Expiration warning issue already exists: #$EXISTING_ISSUE"
-          fi
-
+          gh repo archive ${{ github.repository }} --yes
 
